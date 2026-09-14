@@ -1,3 +1,48 @@
 from django.db import models
 
-# Create your models here.
+from config.settings import AUTH_USER_MODEL
+
+class Habit(models.Model):
+    user = models.ForeignKey(
+        AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        blank=True,
+        null=True,
+        verbose_name="Пользователь",
+        help_text="Укажите пользователя",
+    )
+
+    place = models.CharField(max_length=100, verbose_name="Место")
+    time = models.CharField(max_length=100, verbose_name="Время")
+    action = models.CharField(max_length=100, verbose_name="Действие")
+
+    is_pleasure_habit = models.BooleanField(default=False, verbose_name='Признак приятной привычки')
+
+    linked_habit = models.CharField(max_length=100, verbose_name="Связанная привычка")
+
+    period = models.PositiveIntegerField(default=0, verbose_name="Периодичность", help_text="в днях")
+    award = models.CharField(max_length=100, verbose_name="Вознаграждение")
+
+    time_to_execution = models.PositiveIntegerField(default=0, verbose_name="Время на выполнение")
+
+    is_public = models.BooleanField(default=False, verbose_name='Признак приятной привычки')
+
+
+class LinkedHabit(models.Model):
+    parent_habit = models.ForeignKey(
+        Habit,
+        on_delete=models.CASCADE,
+        blank=True,
+        null=True,
+        verbose_name="Привычка",
+        related_name="parent",
+    )
+
+    child_habit = models.ForeignKey(
+        Habit,
+        on_delete=models.CASCADE,
+        blank=True,
+        null=True,
+        verbose_name="Связанная привычка",
+        related_name="child",
+    )
