@@ -18,7 +18,13 @@ class Habit(models.Model):
 
     is_pleasure_habit = models.BooleanField(default=False, verbose_name='Признак приятной привычки')
 
-    linked_habit = models.CharField(max_length=100, blank=True, null=True, verbose_name="Связанная привычка")
+    linked_habit_1 = models.ForeignKey(
+            'self',
+            on_delete=models.CASCADE,
+            null=True,
+            blank=True,
+            related_name='linked_habit'
+        )
 
     period = models.PositiveIntegerField(default=0, verbose_name="Периодичность", help_text="в днях")
     award = models.CharField(max_length=100, blank=True, null=True, verbose_name="Вознаграждение")
@@ -26,6 +32,9 @@ class Habit(models.Model):
     time_to_execution = models.PositiveIntegerField(default=0, verbose_name="Время на выполнение")
 
     is_public = models.BooleanField(default=False, verbose_name='Признак публичности')
+
+    class Meta:
+        ordering = ['id']
 
 
 class LinkedHabit(models.Model):

@@ -9,11 +9,11 @@ from . import views
 app_name = HabitTrackerConfig.name
 
 urlpatterns = [
-    path('habit/list', views.HabitListAPIView.as_view(), name='habit_list'),
-    path('habit/create', views.HabitCreateAPIView.as_view(), name='habit_create'),
-    path('habit/<int:pk>', views.HabitRetrieveAPIView.as_view(), name='habit_retrieve'),
-    path('habit/update/<int:pk>', views.HabitUpdateAPIView.as_view(), name='habit_update'),
-    path('habit/delete/<int:pk>', views.HabitDestroyAPIView.as_view(), name='habit_delete'),
+    path('habit/list/', views.HabitListAPIView.as_view(), name='habit_list'),
+    path('habit/create/', views.HabitCreateAPIView.as_view(), name='habit_create'),
+    path('habit/<int:pk>/', views.HabitRetrieveAPIView.as_view(), name='habit_retrieve'),
+    path('habit/update/<int:pk>/', views.HabitUpdateAPIView.as_view(), name='habit_update'),
+    path('habit/delete/<int:pk>/', views.HabitDestroyAPIView.as_view(), name='habit_delete'),
 ]
 
 if DEBUG:
