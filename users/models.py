@@ -40,6 +40,14 @@ class User(AbstractUser):
 
     is_staff = models.BooleanField(default=False)
 
+    tg_chat_id = models.CharField(
+        max_length=50,
+        null=True,
+        blank=True,
+        verbose_name="Телеграм chat-id",
+        help_text="Укажите телеграм chat-id"
+    )
+
     class Meta:
         verbose_name = "Пользователь"
         verbose_name_plural = "Пользователи"
