@@ -25,6 +25,8 @@ INSTALLED_APPS = [
     "rest_framework",
     "rest_framework_simplejwt",
     "django_celery_beat",
+    "corsheaders",
+    "drf_yasg",
 
     "habit_tracker",
     "users",
@@ -38,6 +40,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -126,7 +129,7 @@ CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 
 CELERY_BEAT_SCHEDULE = {
     'reminder': {
-        'task': 'habit_tracker.tasks.send_habit_reminder',
+        'task': 'habit_tracker.tasks.habit_reminder',
         'schedule': timedelta(minutes=1),
     },
 }
@@ -134,7 +137,16 @@ CELERY_BEAT_SCHEDULE = {
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_URL = "https://api.telegram.org/bot"
 
+CORS_ALLOWED_ORIGINS = [
+    "https://example.com",
+]
+
+CSRF_TRUSTED_ORIGINS = [
+
+    "http://localhost:8080",
+]
+
 """
-    celery -A config worker --loglevel=info
-    celery -A config beat --loglevel=info
+    celery -A config worker --loglevel=info --pool=solo
+    celery -A config beat --loglevel=info --pool=solo
 """

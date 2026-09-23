@@ -33,6 +33,12 @@ class Habit(models.Model):
 
     is_public = models.BooleanField(default=False, verbose_name='Признак публичности')
 
+    last_remind = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name='Дата последнего напоминания',
+    )
+
     class Meta:
         ordering = ['id']
 
