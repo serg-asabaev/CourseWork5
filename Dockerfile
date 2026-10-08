@@ -1,8 +1,9 @@
 FROM python:3.14-slim
 
-# Устанавливаем системные зависимости (нужны для Poetry)
+# Устанавливаем системные зависимости (нужны для Poetry и postgresql client)
 RUN apt-get update && apt-get install -y \
     curl \
+    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Устанавливаем Poetry
@@ -21,10 +22,10 @@ COPY pyproject.toml poetry.lock ./
 RUN poetry config virtualenvs.create false \
     && poetry install --no-root --no-interaction --no-ansi
 
-RUN pip install --no-cache-dir "psycopg[binary]"
+RUN pip install --no-cache-dir "psycopg[binary]" gunicorn
 
 # Копируем остальной код
 COPY . .
 
-# Команда запуска
-CMD ["python", "manage.py", "runserver", "8080"]
+# Команда по умолчанию (будет переопределена в compose)
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000"]
