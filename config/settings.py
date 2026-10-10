@@ -150,3 +150,5 @@ CSRF_TRUSTED_ORIGINS = [
     celery -A config worker --loglevel=info --pool=solo
     celery -A config beat --loglevel=info --pool=solo
 """
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
