@@ -1,11 +1,11 @@
 FROM python:3.14-slim
 
 # Устанавливаем системные зависимости (нужны для Poetry и postgresql client).
-# build-essential нужен для сборки psycopg2 из исходников (Linux-колёс нет),
-# libpq-dev — для заголовков PostgreSQL.
+# build-essential нужен для сборки psycopg2 из исходников (Linux-колёс нет):
+# он тянет gcc и libc6-dev с заголовками <assert.h> и др. libpq-dev — заголовки PostgreSQL.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
-    gcc \
+    build-essential \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
@@ -24,8 +24,6 @@ COPY pyproject.toml poetry.lock ./
 # Устанавливаем зависимости (без dev-пакетов для production)
 RUN poetry config virtualenvs.create false \
     && poetry install --no-root --no-interaction --no-ansi
-
-RUN pip install --no-cache-dir "psycopg[binary]" gunicorn
 
 # Копируем остальной код
 COPY . .
