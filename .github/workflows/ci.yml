@@ -1,0 +1,219 @@
+name: Django CI/CD
+
+on:
+  push:
+    branches: [main, develop, feature/coursework_6]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    env:
+      SECRET_KEY: test-secret-key
+      DEBUG: "False"
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Poetry and dependencies
+        run: |
+          python -m pip install --upgrade pip poetry
+          poetry config virtualenvs.create false
+          poetry lock
+          poetry install --no-root --no-interaction --no-ansi
+
+      - name: Install linters
+        run: python -m pip install flake8
+
+      - name: Lint with flake8 (errors only)
+        run: |
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+
+      - name: Lint with flake8 (style warnings)
+        run: |
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+      - name: Django system check
+        run: python manage.py check
+
+  test:
+    runs-on: ubuntu-latest
+    needs: lint
+
+    services:
+      postgres:
+        image: postgres:15.0
+        env:
+          POSTGRES_DB: coursework5
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: admin
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      POSTGRES_DB: coursework5
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin
+      DB_HOST: 127.0.0.1
+      DB_PORT: "5432"
+      SECRET_KEY: test-secret-key
+      DEBUG: "False"
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Poetry and dependencies
+        run: |
+          python -m pip install --upgrade pip poetry
+          poetry config virtualenvs.create false
+          poetry install --no-root --no-interaction --no-ansi
+
+      - name: Django system check
+        run: python manage.py check
+
+      - name: Run migrations
+        run: python manage.py migrate --noinput
+
+      - name: Run tests
+        run: python manage.py test --verbosity 2
+
+  build-docker:
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Prepare env file
+        run: cp .env.docker.example .env
+
+      - name: Validate docker compose config
+        run: docker compose -f docker-compose.yml config
+
+      - name: Build Docker images
+        run: |
+          docker compose -f docker-compose.yml build
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [test, build-docker]
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/coursework_6'
+
+    env:
+      SERVER_HOST: ${{ vars.SERVER_HOST || '81.26.178.240' }}
+      SERVER_USER: ${{ vars.SERVER_USER || 'ubuntu' }}
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up SSH key for server
+        env:
+          SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$SERVER_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Ensure app dir
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new "$SERVER_USER@$SERVER_HOST" \
+            "mkdir -p ~/app"
+
+      - name: Create .env file
+        env:
+          DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: |
+          cat > .env.deploy << EOF
+          SECRET_KEY=${DJANGO_SECRET_KEY}
+          DEBUG=False
+          POSTGRES_DB=${POSTGRES_DB}
+          POSTGRES_USER=${POSTGRES_USER}
+          POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+          DB_HOST=db
+          DB_PORT=5432
+          NAME=${POSTGRES_DB}
+          USER=${POSTGRES_USER}
+          PASSWORD=${POSTGRES_PASSWORD}
+          HOST=db
+          PORT=5432
+          CELERY_BROKER_URL=redis://redis:6379/0
+          CELERY_RESULT_BACKEND=redis://redis:6379/0
+          TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+          EOF
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new "$SERVER_USER@$SERVER_HOST" "rm -f ~/app/.env"
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new .env.deploy "$SERVER_USER@$SERVER_HOST:~/app/.env"
+          rm -f .env.deploy
+
+      - name: Copy project to server
+        run: |
+          rsync -az --delete \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new" \
+            --exclude '.git' \
+            --exclude '.env' \
+            --exclude '__pycache__' \
+            --exclude '.venv' \
+            --exclude '.idea' \
+            --exclude 'ssh_key.txt*' \
+            --exclude '.coverage' \
+            --exclude 'celerybeat-schedule*' \
+            --exclude 'staticfiles' \
+            --exclude 'media' \
+            ./ "$SERVER_USER@$SERVER_HOST:~/app/"
+
+      - name: Build and restart containers
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new "$SERVER_USER@$SERVER_HOST" \
+            "cd ~/app && docker compose up -d --build && docker compose restart nginx"
+
+      - name: Apply migrations
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new "$SERVER_USER@$SERVER_HOST" \
+            "cd ~/app && docker compose exec -T web python manage.py migrate --noinput"
+
+      - name: Collect static
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new "$SERVER_USER@$SERVER_HOST" \
+            "cd ~/app && docker compose exec -T web python manage.py collectstatic --noinput || true"
+
+      - name: Health check
+        run: |
+          for i in $(seq 1 12); do
+            if curl -fsS --max-time 10 "http://$SERVER_HOST/swagger/" > /dev/null \
+              || curl -fsS --max-time 10 "http://$SERVER_HOST/" > /dev/null; then
+              echo "Deploy OK: site responds"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Health check failed"
+          exit 1
