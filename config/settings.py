@@ -152,3 +152,5 @@ CSRF_TRUSTED_ORIGINS = [
 """
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
+STRIPE_API_KEY = os.getenv('STRIPE_API_KEY')
+

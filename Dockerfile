@@ -1,8 +1,11 @@
 FROM python:3.14-slim
 
-# Устанавливаем системные зависимости (нужны для Poetry и postgresql client)
-RUN apt-get update && apt-get install -y \
+# Устанавливаем системные зависимости (нужны для Poetry и postgresql client).
+# build-essential нужен для сборки psycopg2 из исходников (Linux-колёс нет),
+# libpq-dev — для заголовков PostgreSQL.
+RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
+    gcc \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
