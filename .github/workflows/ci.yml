@@ -193,7 +193,7 @@ jobs:
       - name: Build and restart containers
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new "$SERVER_USER@$SERVER_HOST" \
-            "cd ~/app && docker compose up -d --build"
+            "cd ~/app && docker compose up -d --build && docker compose restart nginx"
 
       - name: Apply migrations
         run: |
