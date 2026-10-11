@@ -142,7 +142,7 @@ jobs:
 
       - name: Ensure app dir
         run: |
-          ssh -i ~/.ssh/deploy_key "$SERVER_USER@$SERVER_HOST" \
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new "$SERVER_USER@$SERVER_HOST" \
             "mkdir -p ~/app"
 
       - name: Create .env file
@@ -170,7 +170,8 @@ jobs:
           CELERY_RESULT_BACKEND=redis://redis:6379/0
           TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
           EOF
-          scp -i ~/.ssh/deploy_key .env.deploy "$SERVER_USER@$SERVER_HOST:~/app/.env"
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new "$SERVER_USER@$SERVER_HOST" "rm -f ~/app/.env"
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new .env.deploy "$SERVER_USER@$SERVER_HOST:~/app/.env"
           rm -f .env.deploy
 
       - name: Copy project to server
@@ -189,17 +190,17 @@ jobs:
 
       - name: Build and restart containers
         run: |
-          ssh -i ~/.ssh/deploy_key "$SERVER_USER@$SERVER_HOST" \
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new "$SERVER_USER@$SERVER_HOST" \
             "cd ~/app && docker compose up -d --build"
 
       - name: Apply migrations
         run: |
-          ssh -i ~/.ssh/deploy_key "$SERVER_USER@$SERVER_HOST" \
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new "$SERVER_USER@$SERVER_HOST" \
             "cd ~/app && docker compose exec -T web python manage.py migrate --noinput"
 
       - name: Collect static
         run: |
-          ssh -i ~/.ssh/deploy_key "$SERVER_USER@$SERVER_HOST" \
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new "$SERVER_USER@$SERVER_HOST" \
             "cd ~/app && docker compose exec -T web python manage.py collectstatic --noinput || true"
 
       - name: Health check
