@@ -176,7 +176,7 @@ jobs:
 
       - name: Copy project to server
         run: |
-          rsync -az \
+          rsync -az --delete \
             -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new" \
             --exclude '.git' \
             --exclude '.env' \
@@ -185,7 +185,9 @@ jobs:
             --exclude '.idea' \
             --exclude 'ssh_key.txt*' \
             --exclude '.coverage' \
-            --exclude 'celerybeat-schedule' \
+            --exclude 'celerybeat-schedule*' \
+            --exclude 'staticfiles' \
+            --exclude 'media' \
             ./ "$SERVER_USER@$SERVER_HOST:~/app/"
 
       - name: Build and restart containers
